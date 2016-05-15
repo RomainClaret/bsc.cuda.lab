@@ -1,0 +1,9 @@
+14:15:55 **** Incremental Build of configuration CudaVisual_parallel for project BilatTools_Cuda ****
+makeCudaVisual jall 
+Cannot run program "makeCudaVisual": Unknown reason
+
+Error: Program "makeCudaVisual" not found in PATH
+PATH=[/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/local/etc/cbi/dev/make]
+
+14:15:55 Build Finished (took 22ms)
+

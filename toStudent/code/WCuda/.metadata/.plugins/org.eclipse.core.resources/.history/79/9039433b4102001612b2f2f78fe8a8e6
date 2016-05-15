@@ -1,0 +1,74 @@
+#pragma once
+
+#include "IndiceTools_GPU.h"
+
+/*----------------------------------------------------------------------*\
+ |*			Declaration 					*|
+ \*---------------------------------------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+template<typename T_IN, typename T_OUT>
+class ReductionTools
+    {
+    public:
+	__device__
+	ReductionTools(int n)
+	    {
+	    this->n=n;
+	    }
+
+	__device__
+	virtual ~ReductionTools()
+	    {
+	    }
+
+	__device__
+	void reduction(T_IN* tabSM,T_OUT* ptrDevResult)
+	    {
+	    reductionIntraThread(tabSM);
+	    reductionInterBlock(tabSM,ptrDevResult);
+	    }
+
+    private:
+	__device__
+	void reductionInterBlock(T_IN* tabSM, T_OUT* ptrDevResult)
+	    {
+	    if(threadIdx.x==0){atomicAdd(ptrDevResult,tabSM[0]);}
+	    }
+
+	__device__
+	void reductionIntraThread(T_IN* tabSM)
+	    {
+	    int half = n/2;
+
+	    while(half >= 1)
+		{
+		rendre(tabSM,half);
+		half=half/2;
+		__syncthreads();
+		}
+	    }
+
+	__device__
+	void rendre(T_IN* tabSM, int half)
+	    {
+	    const int THREAD_LOCAL_ID = Indice1D::tidLocal();
+	    const int NB_THREAD_LOCAL = Indice1D::nbThread();
+	    int s = THREAD_LOCAL_ID;
+
+	    while(s < half)
+		{
+		tabSM[s] += tabSM[s+half];
+		s += NB_THREAD_LOCAL;
+		}
+	    }
+
+	//tools
+	int n;
+    };
+
+/*----------------------------------------------------------------------*\
+ |*			End	 					*|
+ \*---------------------------------------------------------------------*/

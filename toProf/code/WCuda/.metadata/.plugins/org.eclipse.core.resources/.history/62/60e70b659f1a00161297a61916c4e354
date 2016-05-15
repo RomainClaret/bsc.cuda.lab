@@ -1,0 +1,101 @@
+#include <iostream>
+#include "Indice1D.h"
+#include "Indice2D.h"
+
+/*----------------------------------------------------------------------*\
+ |*			Declaration 					*|
+ \*---------------------------------------------------------------------*/
+__global__ void histogramDeviceMM_old(int* ptrDevInput, int* ptrDevOut, int n, int size);
+__global__ void histogramDeviceMM(float* ptrDevResult, int nbSlices);
+__device__ float sliceDeviceMM(int nbSlices);
+
+/*--------------------------------------*\
+ |*		Imported	 	*|
+ \*-------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			Implementation 					*|
+ \*---------------------------------------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+__global__ void histogramDeviceMM_old(int* ptrDevInput, int* ptrDevOut, int n, int size)
+    {
+    extern __shared__ int tabSM[];
+
+    const int THREADS = Indice1D::tid();
+
+    int s = Indice2D::nbThreadX();
+
+    if(Indice1D::tidLocal() < size)
+	{
+	tabSM[Indice1D::tidLocal()] = 0;
+	}
+
+    __syncthreads();
+
+    while(s < n)
+	{
+	atomicAdd(&tabSM[ptrDevInput[s]], 1);
+	s += THREADS;
+	}
+
+    __syncthreads();
+
+    if(Indice1D::tidLocal() < size)
+	{
+	atomicAdd(&ptrDevOut[Indice1D::tidLocal()], tabSM[Indice1D::tidLocal()]);
+	}
+    }
+
+__global__ void histogramDeviceMM(float* ptrDevResult, int nbSlices)
+    {
+    const int NB_THREADS_LOCAL= Indice1D::nbThreadBlock();
+    const int THREAD_LOCAL_ID = Indice1D::tidLocal();
+
+    __shared__ float ptrDevArraySM[1024];
+
+    ptrDevArraySM[THREAD_LOCAL_ID] = sliceDevice(nbSlices);
+
+    __syncthreads();
+
+    ReductionTools::template reductionIntraBlock<int>(ptrDevArraySM, NB_THREADS_LOCAL);
+    ReductionTools::template reductionInterBlock<int>(ptrDevArraySM, ptrDevResult);
+    }
+
+
+__device__ float sliceDeviceMM(int nbSlices)
+    {
+    const int NB_THREADS_LOCAL= Indice1D::nbThreadBlock();
+    const int THREAD_LOCAL_ID = Indice1D::tidLocal();
+
+    float dx = 1.0 / nbSlices;
+
+    float sum = 0.0;
+    int s = THREAD_LOCAL_ID;
+    while (s < nbSlices)
+	{
+	sum += CommunDevices::calcPi(s * dx);
+	s += NB_THREADS_LOCAL;
+	}
+
+    return sum / nbSlices;
+    }
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			End	 					*|
+ \*---------------------------------------------------------------------*/
+

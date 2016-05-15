@@ -1,0 +1,5 @@
+eclipse.preferences.version=1
+encoding//src/cpp/core/01_Rippling/01_animable/device/ripplingDevice.cu=UTF-8
+encoding//src/cpp/core/02_Mandelbrot_Julia/moo/device/FractalDevice.cu=UTF-8
+encoding//src/cpp/core/03_RayTracing/moo/host/RayTracingGM.cu=UTF-8
+encoding/cudaLinux.mk=UTF-8

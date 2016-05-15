@@ -1,0 +1,68 @@
+#include <iostream>
+
+#include "Slice.h"
+#include "Device.h"
+#include "cudaTools.h"
+#include "MathTools.h"
+
+
+/*----------------------------------------------------------------------*\
+ |*			Declaration 					*|
+ \*---------------------------------------------------------------------*/
+extern __global__ void computePi(float* ptrDevResult, int nbSlices);
+
+/*--------------------------------------*\
+ |*		Imported	 	*|
+ \*-------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+Slice::Slice(int nbSlices)
+    {
+    this->nbSlices = nbSlices;
+
+    dg = dim3(128, 1, 1);
+    db = dim3(512, 1, 1);
+
+    Device::gridAssert(dg, db);
+    }
+
+Slice::~Slice()
+    {
+    HANDLE_ERROR(cudaFree(ptrDevResult));
+    this->ptrDevResult=NULL;
+    }
+
+float Slice::computePi()
+    {
+    HANDLE_ERROR(cudaMalloc(&ptrDevResult, sizeof(float)));
+    HANDLE_ERROR(cudaMemset(ptrDevResult, 0, sizeof(float)));
+
+    computePi<<<dg,db>>>(this->ptrDevResult, INT_MAX);
+
+    HANDLE_ERROR(cudaMemcpy(this->&piValue, this->ptrDevResult, sizeof(float), cudaMemcpyDeviceToHost));
+
+    return piValue;
+    }
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			Implementation 					*|
+ \*---------------------------------------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			End	 					*|
+ \*---------------------------------------------------------------------*/
+

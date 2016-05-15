@@ -1,0 +1,74 @@
+#include <iostream>
+#include "Indice1D.h"
+#include "Indice2D.h"
+
+/*----------------------------------------------------------------------*\
+ |*			Declaration 					*|
+ \*---------------------------------------------------------------------*/
+__global__ void histogramDeviceMM_old(int* ptrDevInput, int* ptrDevOut, int n, int size);
+__global__ void histogramDeviceMM(int* ptrDevInput, int nbSlices);
+__device__ float sliceDeviceMM(int nbSlices);
+
+/*--------------------------------------*\
+ |*		Imported	 	*|
+ \*-------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			Implementation 					*|
+ \*---------------------------------------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+__global__ void histogramDeviceMM(uchar* ptrDevTabData, int nTabData, int* ptrDevHisto)
+    {
+    extern __shared__ int tabSM[];
+
+    initTabSM(tabSM);
+    reductionIntraThread(ptrDevTabData, nTabData, tabSM);
+    __syncthreads();
+    reductionInterBloc(tabSM, ptrDevHisto);
+    }
+
+__device__ void reductionIntraThread(uchar* ptrDevTabData, int* ptrOut, int n_size)
+    {
+    const int NB_THREADS = Indice2D::nbThread();
+
+    int s = Indice2D::tid();
+    while (s < nTabData)
+	{
+	atomicAdd(&tabSM[ptrDevTabData[s]], 1);
+
+	s += NB_THREAD;
+	}
+    }
+
+__device__ void reductionInterBlock(int* ptrOut, int* ptrDevOut)
+    {
+    const int NB_THREADS_LOCAL= Indice2D::nbThreadBlock();
+
+    int s = Indice1D::tidLocal();
+    while(tid < 256)
+	{
+
+	atomicAdd(&ptrDevOut[ptrOut[s]], 1);
+	tid += NB_THREADS_LOCAL;
+	}
+    }
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			End	 					*|
+ \*---------------------------------------------------------------------*/
+

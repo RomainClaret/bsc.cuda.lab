@@ -1,0 +1,65 @@
+#include <iostream>
+#include "ReductionTools.h"
+#include "CommunDevices.h"
+#include "cudaTools.h"
+
+/*----------------------------------------------------------------------*\
+ |*			Declaration 					*|
+ \*---------------------------------------------------------------------*/
+__global__ static void histogram(int* ptrDevInput, int* ptrDevOut, int n, int sizeHistogramme);
+
+/*--------------------------------------*\
+ |*		Imported	 	*|
+ \*-------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			Implementation 					*|
+ \*---------------------------------------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+__global__ void histogram(int* ptrDevInput, int* ptrDevOut, int sizeHistogramme, int n)
+    {
+    extern __shared__ int tabSM[];
+
+    const int THREADS = Indice1D::tid();
+    int s = Indice2D::nbThreadX();
+
+    if(Indice1D::tidLocal() < sizeHistogramme)
+	{
+	tabSM[Indice1D::tidLocal()] = 0;
+	}
+
+    __syncthreads();
+
+    while(s < n)
+	{
+	atomicAdd(&tabSM[ptrDevInput[s]], 1);
+	s += THREADS;
+	}
+
+    __syncthreads();
+
+    if(Indice1D::tidLocal() < sizeHistogramme)
+	{
+	atomicAdd(&ptrDevOut[Indice1D::tidLocal()], tabSM[Indice1D::tidLocal()]);
+	}
+    }
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			End	 					*|
+ \*---------------------------------------------------------------------*/
+

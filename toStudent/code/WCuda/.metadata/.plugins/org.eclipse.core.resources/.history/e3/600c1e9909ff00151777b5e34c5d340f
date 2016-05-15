@@ -1,0 +1,86 @@
+#include "RayTracing.h"
+#include <ConstantMemoryLink.h>
+
+#include <iostream>
+#include <assert.h>
+
+#include "Device.h"
+using namespace gpu;
+
+
+
+/*----------------------------------------------------------------------*\
+ |*			Declaration 					*|
+ \*---------------------------------------------------------------------*/
+#define MAX_SPHERES 2300
+//__constant__ Sphere DATA_CM[MAX_SPHERES];
+
+/*--------------------------------------*\
+ |*		Imported	 	*|
+ \*-------------------------------------*/
+extern __global__ void rayTracingGM(uchar4* ptrDevPixels, int w, int h, int spheres, int t, Sphere* ptrSpheres);
+//extern __global__ void rayTracingCM(uchar4* ptrDevPixels, int w, int h, int spheres, int t);
+extern __global__ void rayTracingSM(uchar4* ptrDevPixels, int w, int h, int spheres, int t, Sphere* ptrSpheres);
+
+//extern ConstantMemoryLink constantMemoryLink();
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			Implementation 					*|
+ \*---------------------------------------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+
+/*-------------------------*\
+ |*	Constructeur	    *|
+ \*-------------------------*/
+RayTracing::RayTracing(const Grid& grid, uint w, uint h, uint t):
+	Animable_I<uchar4>(grid, w, h, "RayTracing_Cuda")
+    {
+    this->t = t;
+    }
+
+RayTracing::~RayTracing()
+    {
+    // rien
+    }
+
+/*-------------------------*\
+ |*	Methode		    *|
+ \*-------------------------*/
+
+/**
+ * Override
+ * Call periodicly by the API
+ */
+void RayTracing::process(uchar4* ptrDevPixels, uint w, uint h, const DomaineMath& domaineMath)
+    {
+    (this->*whoProcess)(ptrDevPixels, w, h, domaineMath);
+    }
+
+/**
+ * Override
+ * Call periodicly by the API
+ */
+void RayTracing::animationStep()
+    {
+    this->n = variateurAnimation.varierAndGet(); // in [0,2pi]
+    }
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			End	 					*|
+ \*---------------------------------------------------------------------*/
+

@@ -1,0 +1,125 @@
+#include <iostream>
+
+#include "cudaTools.h"
+#include "Device.h"
+#include "math.h"
+
+
+/*----------------------------------------------------------------------*\
+ |*			Declaration 					*|
+ \*---------------------------------------------------------------------*/
+extern __global__ void histogramDeviceGM(int* ptrDevTabData, int nTabData, int* ptrDevHisto);
+
+bool runHistoMM(int n);
+bool histogramMM(int n);
+void printFrequenciesMM(int* ptrOut, int n);
+
+/*--------------------------------------*\
+ |*		Imported	 	*|
+ \*-------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+int randomValueMM(int min, int max)
+    {
+    return (int)( (max-min) * ( (float)(rand()) / (float)RAND_MAX ) + min);
+    }
+
+bool histogramMM(int n)
+    {
+    return runHistoMM(n);
+    }
+
+bool runHistoMM(int n)
+    {
+    const int N_MAX_VALUE = 256;
+    const int DG_X = N_MAX_VALUE;
+    const int DG_Y = N_MAX_VALUE;
+
+    dim3 dg = dim3(DG_X, 1, 1);
+    dim3 db = dim3(DG_Y, 1, 1);
+    Device::gridAssert(dg, db);
+
+    size_t max_size = N_MAX_VALUE*sizeof(int);
+    size_t n_size = n*sizeof(int);
+
+    int* ptrInput = new int[n];
+    int* ptrOut = new int[N_MAX_VALUE];
+
+    int* ptrDevInput;
+    int* ptrDevOut;
+
+
+    for(int i = 0; i < n; ++i)
+	{
+	ptrInput[i] = i%N_MAX_VALUE;
+	}
+
+    for(int i = 0; i < N_MAX_VALUE; ++i)
+	{
+	ptrOut[i] = 0;
+	}
+
+    for(int i = 0; i < n; ++i)
+	{
+	std::swap(ptrInput[randomValueMM(0, n-1)], ptrInput[randomValueMM(0, n-1)]);
+	}
+
+    HANDLE_ERROR(cudaMalloc((void**)&ptrDevInput, n_size));
+    HANDLE_ERROR(cudaMemset(ptrDevInput, 0, n_size));
+
+    HANDLE_ERROR(cudaMalloc((void**)&ptrDevOut, max_size));
+    HANDLE_ERROR(cudaMemset(ptrDevOut, 0, max_size));
+
+   // histogramDeviceMM<<<dg,db,max_size>>>(ptrDevInput, n, ptrDevOut, N_MAX_VALUE);
+    histogramDeviceGM<<<dg, db, max_size>>>(ptrDevInput, ptrDevOut, n, N_MAX_VALUE);
+    Device::lastCudaError("histogramDeviceMM");
+
+    HANDLE_ERROR(cudaMemcpy(ptrOut, ptrDevOut, max_size, cudaMemcpyDeviceToHost));
+
+    HANDLE_ERROR(cudaFree(ptrDevOut));
+    HANDLE_ERROR(cudaFree(ptrDevInput));
+
+    //printFrequenciesMM(ptrOut, n);
+
+    bool isOk = true;
+    for(int i = 0; isOk && i < N_MAX_VALUE-1; ++i)
+	{
+	isOk &= (ptrOut[i] == ptrOut[i+1]);
+	}
+
+    delete[] ptrInput;
+    delete[] ptrOut;
+
+    return isOk;
+    }
+
+void printFrequenciesMM(int* ptrOut, int n)
+    {
+    for(int i=0; i<n; i++)
+	{
+	std::cout << "i = " << i << " | frequence = " << ptrOut[i] << std::endl;
+	}
+    }
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			Implementation 					*|
+ \*---------------------------------------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			End	 					*|
+ \*---------------------------------------------------------------------*/
+

@@ -1,0 +1,88 @@
+#pragma once
+
+#include <iostream>
+#include "ReductionTools.h"
+#include "CommunDevices.h"
+#include "curandTools.h"
+
+/*----------------------------------------------------------------------*\
+ |*			Declaration 					*|
+ \*---------------------------------------------------------------------*/
+__global__ void computePi(int* ptrDevResult, curandState* ptrDevTabGenerators, int nbGen);
+__device__ int generatorDevice(curandState* ptrDevTabGenerators, int nbGen);
+__device__ void generatePoints(curandState* ptrDevGenerator, float xMin, float xMax, float yMin, float yMax, float* x, float* y);
+
+
+/*--------------------------------------*\
+ |*		Imported	 	*|
+ \*-------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			Implementation 					*|
+ \*---------------------------------------------------------------------*/
+
+/*--------------------------------------*\
+ |*		Public			*|
+ \*-------------------------------------*/
+__global__ void computePi(float* ptrDevResult, curandState* ptrDevTabGenerators, int nbGen)
+    {
+    const int NB_THREADS_LOCAL= Indice1D::nbThreadBlock();
+    const int THREAD_LOCAL_ID = Indice1D::tidLocal();
+
+    __shared__ float ptrDevArraySM[1024];
+
+    ptrDevArraySM[THREAD_LOCAL_ID] = sliceDevice(ptrDevTabGenerators, nbGen);
+
+    __syncthreads();
+
+    ReductionTools::template reductionIntraBlock<float>(ptrDevArraySM, NB_THREADS_LOCAL);
+    ReductionTools::template reductionInterBlock<float>(ptrDevArraySM, ptrDevResult);
+    }
+
+
+__device__ float generatorDevice(curandState* ptrDevTabGenerators, int nbGen)
+    {
+    const int NB_THREADS_LOCAL= Indice1D::nbThreadBlock();
+    const int THREAD_LOCAL_ID = Indice1D::tidLocal();
+
+    float threadSum = 0.0;
+    float dx;
+    float dy;
+    int s = THREAD_LOCAL_ID;
+    while (s < nbSlices)
+	{
+	generateRandomPoint(&ptrDevTabGenerators[THREAD_LOCAL_ID], 0, 0, 1, 4, &dx, &dy);
+
+	if (dy <= CustomMathTools::calcPi(x))
+	    {
+	    threadSum++;
+	    }
+
+	s += NB_THREADS_LOCAL;
+	}
+
+    return threadSum;
+    }
+
+__device__ void generateRandomPoint(curandState* ptrDevGenerator, float xMin, float yMin, float xMax, float yMax, float* dx, float* dy)
+    {
+    *dx = curand_uniform(ptrDevGenerator) * (xMax - xMin) + xMin;
+    *dy = curand_uniform(ptrDevGenerator) * (yMax - yMin) + yMin;
+    }
+
+/*--------------------------------------*\
+ |*		Private			*|
+ \*-------------------------------------*/
+
+/*----------------------------------------------------------------------*\
+ |*			End	 					*|
+ \*---------------------------------------------------------------------*/
+
